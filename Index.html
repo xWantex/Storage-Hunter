@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Storage Hunter: Skill Tree Update</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            overflow-y: auto; overflow-x: hidden;
+            overscroll-behavior: none; touch-action: manipulation;
+            height: 100%; margin: 0; padding: 0;
+        }
+
+        :root {
+            --bg-dark: #1a1c23;
+            --panel-bg: #252830;
+            --accent: #ff9f43;
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --blue: #3498db;
+            --purple: #9b59b6;
+            --gold: #f1c40f;
+            --text-main: #ecf0f1;
+            --text-muted: #95a5a6;
+            --shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark); color: var(--text-main);
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* --- BUTTONS --- */
+        button {
+            border: none; border-radius: 8px; padding: 12px 18px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-size: 0.9rem;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2); letter-spacing: 0.5px; position: relative; overflow: hidden;
+        }
+        button:active { transform: translateY(4px); box-shadow: none; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); transform: none; box-shadow: none;}
+
+        .btn-green { background: linear-gradient(to bottom, #2ecc71, #27ae60); color: white; }
+        .btn-red { background: linear-gradient(to bottom, #e74c3c, #c0392b); color: white; }
+        .btn-blue { background: linear-gradient(to bottom, #3498db, #2980b9); color: white; }
+        .btn-gold { background: linear-gradient(to bottom, #f1c40f, #f39c12); color: #2c3e50; }
+        .btn-purple { background: linear-gradient(to bottom, #9b59b6, #8e44ad); color: white; }
+        .btn-black { background: linear-gradient(to bottom, #333, #000); color: var(--red); border: 1px solid var(--red); }
+        .btn-dark { background: #333; color: #ccc; border: 1px solid #555; }
+
+        /* Ability Cooldown Animation */
+        .cooldown-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+            background: rgba(0, 0, 0, 0.6); transition: height 0.1s linear;
+        }
+
+        /* --- TITLE SCREEN --- */
+        .title-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #2c3e50, #000000); 
+            z-index: 200; display: flex; align-items: center; justify-content: center;
+        }
+        .title-card {
+            background: var(--panel-bg); padding: 50px; border-radius: 24px; 
+            width: 90%; max-width: 450px; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6); border: 1px solid #333;
+        }
+        .title-card h1 { margin-top: 0; color: var(--accent); font-size: 2.8rem; text-shadow: 0 4px 10px rgba(230, 126, 34, 0.3); }
+        .input-group { text-align: left; margin-bottom: 25px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-muted); }
+        .input-group input { 
+            width: 100%; padding: 15px; border: 2px solid #444; border-radius: 8px; 
+            font-size: 1.2rem; background: #1a1c23; color: white; outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+        .error-msg { color: var(--red); font-size: 0.8rem; margin-top: 5px; display: none; font-weight: bold;}
+
+        /* --- HUD --- */
+        .hud {
+            position: sticky; top: 0; z-index: 100; width: 100%;
+            background: rgba(37, 40, 48, 0.95); backdrop-filter: blur(10px);
+            padding: 15px 0; border-bottom: 1px solid #333;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex;
+            justify-content: center; gap: 40px; font-size: 0.9rem; align-items: center;
+        }
+        .hud-item { display: flex; flex-direction: column; align-items: center; min-width: 70px; }
+        .hud-label { font-size: 0.7rem; font-weight: 800; color: #666; letter-spacing: 1px; }
+        .hud-val { font-weight: 800; font-size: 1.4rem; white-space: nowrap; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .money { color: #2ecc71; }
+        .rep { color: var(--gold); }
+
+        /* --- FLOATING MENU --- */
+        .floating-menu {
+            position: fixed; bottom: 20px; right: 20px; 
+            display: flex; flex-direction: column; gap: 12px; z-index: 120;
+            pointer-events: none;
+        }
+        .fab-btn {
+            pointer-events: auto; width: 55px; height: 55px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1); transition: transform 0.2s; padding: 0;
+        }
+        .fab-btn:hover { transform: scale(1.1) rotate(5deg); }
+        .fab-debug { background: #2c3e50; border: 2px solid var(--red); display: none; }
+
+        /* --- MODALS & PAUSE --- */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.85); z-index: 150; display: none;
+            justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        
+        #pause-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 400; backdrop-filter: blur(8px);
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        #modal-debug { z-index: 200; }
+        #modal-alert { z-index: 300; }
+
+        .modal-content {
+            background: var(--panel-bg); width: 95%; max-width: 600px; max-height: 85vh;
+            overflow-y: auto; padding: 30px; border-radius: 16px; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #444;
+        }
+        .close-btn { 
+            position: absolute; top: 15px; right: 15px; 
+            background: transparent; color: #fff; font-size: 1.5rem; 
+            padding: 0; box-shadow: none; opacity: 0.7;
+        }
+        .close-btn:hover { opacity: 1; background: transparent; transform: none; }
+
+        #modal-alert .modal-content { max-width: 400px; text-align: center; border: 2px solid var(--accent); }
+        #alert-title { color: var(--accent); margin-top: 0; text-transform: uppercase; }
+        #alert-msg { font-size: 1.1rem; margin-bottom: 25px; line-height: 1.5; }
+
+        .skill-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding: 20px 0; }
+        .skill-info { padding-right: 15px; }
+        .skill-info h4 { margin: 0 0 5px 0; color: var(--accent); }
+        .skill-info p { margin: 0; font-size: 0.85rem; color: #aaa; }
+
+        .collection-group { margin-bottom: 20px; border: 1px solid #444; border-radius: 12px; padding: 15px; background: rgba(0,0,0,0.2); }
+        .collection-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 15px; color: var(--text-main); }
+        .collection-slots { display: flex; gap: 15px; justify-content: center; }
+        .slot { 
+            width: 60px; height: 60px; border: 2px dashed #555; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; font-size: 1.8rem; opacity: 0.3;
+            background: #222;
+        }
+        .slot.filled { border: 2px solid var(--accent); background: rgba(255, 159, 67, 0.2); opacity: 1; animation: pop 0.3s ease; }
+
+        .debug-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .btn-cheat { background: #333; color: #aaa; border: 1px solid #555; font-size: 0.8rem; }
+        .btn-cheat:hover { background: #000; border-color: var(--accent); color: white; }
+
+        /* --- GAME AREA --- */
+        .game-wrapper {
+            display: none; grid-template-columns: 1fr; gap: 25px;
+            width: 90%; max-width: 1100px; margin: 30px auto; 
+            padding-bottom: 120px;
+        }
+        @media (min-width: 768px) { .game-wrapper { grid-template-columns: 1fr 1fr; } }
+
+        .panel {
+            background: var(--panel-bg); border-radius: 20px; padding: 25px;
+            box-shadow: var(--shadow); display: flex; flex-direction: column;
+            border: 1px solid #333; position: relative;
+        }
+        
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h2 { margin: 0; font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; }
+
+        /* --- DOOR VISUAL --- */
+        .door-container {
+            position: relative; height: 220px; border-radius: 12px; overflow: hidden;
+            border: 4px solid #555; background: #111; margin-bottom: 20px;
+            box-shadow: inset 0 0 20px black;
+        }
+        .door-visual {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(180deg, #7f8c8d, #95a5a6 10px, #7f8c8d 20px, #34495e 25px);
+            transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1); 
+            z-index: 10; display: flex; align-items: center; justify-content: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .door-visual.grand {
+            background: repeating-linear-gradient(180deg, #f1c40f, #f39c12 10px, #f1c40f 20px, #d35400 25px);
+            border: 2px solid white;
+        }
+        .door-visual.open { transform: translateY(-100%); }
+        .door-visual::after { content: "UNIT " attr(data-id); font-size: 3.5rem; font-weight: 900; color: rgba(255,255,255,0.3); }
+        .door-visual.grand::after { content: "GRAND " attr(data-id); color: rgba(0,0,0,0.3); }
+        .door-contents-bg { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #333, #000); }
+
+        .hint-text { 
+            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; 
+            border-left: 4px solid var(--accent); margin-bottom: 20px; 
+            font-style: italic; color: #ccc; line-height: 1.5; min-height: 60px;
+        }
+        .quality-hint {
+            display: block; margin-top: 5px; font-weight: bold; color: var(--purple); font-style: normal;
+        }
+
+        .bid-display { 
+            text-align: center; margin-bottom: 20px; padding: 20px; 
+            background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px solid #333;
+        }
+        .current-bid { font-size: 4rem; font-weight: 800; line-height: 1; transition: color 0.2s; color: white;}
+        #bidder-name { font-weight: bold; font-size: 1.2rem; transition: color 0.2s; color: var(--accent); margin-top: 5px;}
+        #bidder-name.enraged { color: var(--red); text-transform: uppercase; animation: shake 0.5s infinite; }
+
+        @keyframes pulseGreen { 0% { transform: scale(1); } 50% { transform: scale(1.1); color: var(--green); } 100% { transform: scale(1); } }
+        @keyframes pulseRed { 0% { transform: scale(1); } 50% { transform: scale(1.1); color: var(--red); } 100% { transform: scale(1); } }
+        .anim-player-bid { animation: pulseGreen 0.3s ease-out; }
+        .anim-rival-bid { animation: pulseRed 0.3s ease-out; }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: auto; }
+        
+        .abilities-row {
+            grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px;
+        }
+        .ability-btn {
+            font-size: 0.8rem; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+
+        /* --- LOOT GRID --- */
+        .loot-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+            gap: 15px; max-height: 500px; overflow-y: auto; padding: 5px; padding-bottom: 140px; 
+        }
+        .item-card {
+            background: #fff; border-radius: 12px; padding: 15px;
+            text-align: center; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); position: relative;
+            height: auto; justify-content: space-between; transition: transform 0.2s;
+            color: #2c3e50;
+        }
+        .item-card:hover { transform: translateY(-5px); }
+        .item-card.cpu-won { opacity: 0.6; background: #bdc3c7; filter: grayscale(0.8); }
+        .item-card.key-reveal { border: 3px solid var(--purple); background: #f3e5f5; animation: pop 0.5s ease; }
+        .item-card.suspicious { border: 3px solid var(--red); background: #2c3e50; color: white; }
+        .item-card.refurbished { border: 3px solid var(--green); background: #e8f5e9; }
+        
+        .key-badge {
+            position: absolute; top: 0; right: 0; background: var(--purple); color: white;
+            font-size: 0.65rem; padding: 4px 8px; border-bottom-left-radius: 8px; border-top-right-radius: 6px; 
+            font-weight: bold; letter-spacing: 0.5px; z-index: 10;
+        }
+
+        .item-icon { font-size: 2.5rem; margin-top: 10px; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.1)); }
+        .item-name { font-weight: 700; font-size: 0.9rem; margin: 8px 0; line-height: 1.2; }
+        .item-price { color: var(--green); font-weight: 800; font-size: 1.1rem; }
+        
+        .loot-actions { display: flex; gap: 8px; width: 100%; margin-top: 10px; }
+        .btn-small { flex: 1; padding: 8px; font-size: 0.75rem; border-radius: 6px; }
+        
+        .status-badge { width: 100%; padding: 8px; font-weight: bold; color: white; border-radius: 6px; margin-top: 8px; font-size: 0.8rem; text-transform: uppercase;}
+        .status-sold { background-color: var(--green); }
+        .status-kept { background-color: var(--blue); }
+        .status-illegal { background-color: var(--dark-red); }
+
+        .safe-box { border: 2px solid #444; background: #2c3e50; color: white; }
+        .safe-box .item-name { color: white; }
+        .btn-crack { background: var(--gold); color: #2c3e50; width: 100%; margin-top: 5px; font-weight: 800;}
+        .progress-container { width: 100%; height: 12px; background: #111; border-radius: 6px; margin-top: 10px; overflow: hidden; display: none; border: 1px solid #555;}
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #f1c40f, #e67e22); width: 0%; transition: width 0.1s linear; }
+
+        .result-box {
+            margin-top: 20px; padding: 20px; border-radius: 12px; background: #fff; color: #2c3e50;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2); border-left: 6px solid #ccc;
+            animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+        .result-total { font-weight: 900; font-size: 1.3rem; border-top: 2px solid #eee; padding-top: 10px; margin-top: 10px; }
+        .profit-win { border-color: var(--green); }
+        .profit-loss { border-color: var(--red); }
+        
+        .log-container { 
+            margin-top: 20px; background: rgba(0,0,0,0.2); height: 120px; 
+            overflow-y: auto; font-size: 0.85rem; padding: 15px; border-radius: 12px;
+            font-family: monospace; border: 1px solid #333; color: #ccc;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .log-rival { color: var(--blue); font-weight: bold; }
+        .log-profit { color: var(--green); font-weight: bold; }
+        .log-loss { color: var(--red); font-weight: bold; }
+
+        .btn-pause { background: #333; color: white; border: 1px solid #555; padding: 5px 12px; font-size: 0.7rem; }
+
+        @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1c23; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="pause-overlay">
+        <h2 style="font-size: 4rem; color: var(--accent); text-shadow: 0 0 20px rgba(255,159,67,0.5);">PAUSED</h2>
+        <button class="btn-green" style="padding: 20px 40px; font-size: 1.5rem;" onclick="togglePause()">RESUME</button>
+    </div>
+
+    <div id="title-screen" class="title-screen">
+        <div class="title-card">
+            <h1>📦 Storage Hunter</h1>
+            <div class="input-group">
+                <label>ENTER NAME</label>
+                <input type="text" id="input-name" value="Player 1">
+            </div>
+            <div class="input-group">
+                <label>STARTING CASH</label>
+                <input type="text" id="input-money" value="1000" placeholder="$1000+">
+                <div id="money-error" class="error-msg">Must start with at least $1000!</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn-gold" onclick="initAudioAndStart()">START CAREER</button>
+                <button class="btn-blue" onclick="loadGame()">LOAD SAVE</button>
+                <button class="btn-red" style="font-size: 0.7rem;" onclick="clearSave()">CLEAR DATA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-skills" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="toggleModal('modal-skills')">✕</button>
+            <h2>🧠 Skills & Upgrades</h2>
+            <div id="skills-list"></div>
+        </div>
+    </div>
+
+    <div id="modal-trophy" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="toggleModal('modal-trophy')">✕</button>
+            <h2>🏆 Trophy Room</h2>
+            <p style="color:#aaa; margin-bottom: 20px;">Collect sets to earn huge Reputation bonuses!</p>
+            <div id="collections-list"></div>
+        </div>
+    </div>
+
+    <div id="modal-alert" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="alert-title">NOTICE</h3>
+            <div id="alert-msg"></div>
+            <button class="btn-blue" style="width:100%; margin-top:20px;" onclick="closeAlert()">OK</button>
+        </div>
+    </div>
+
+    <div id="modal-debug" class="modal-overlay">
+        <div class="modal-content" style="border: 2px solid var(--red);">
+            <button class="close-btn" onclick="toggleModal('modal-debug')">✕</button>
+            <h2>🛠️ Developer Tools</h2>
+            <div id="debug-cash-display" style="text-align:center; font-weight:bold; color:var(--green); margin-bottom:15px; font-size:1.2rem;">
+                Current: $1,000
+            </div>
+            <div class="debug-grid">
+                <button class="btn-cheat" onclick="debugForceWin()">👑 FORCE WIN</button>
+                <button class="btn-cheat" onclick="debugPeek()">👀 PEEK VALUE</button>
+                <button class="btn-cheat" onclick="debugAddCash()">💰 +$50,000</button>
+                <button class="btn-cheat" onclick="debugAddRep()">⭐ +10 REP</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="floating-menu" id="floating-menu" style="display:none;">
+        <button class="fab-btn btn-purple" onclick="playSound('click'); toggleModal('modal-skills')" title="Skills">🧠</button>
+        <button class="fab-btn btn-gold" onclick="playSound('click'); toggleModal('modal-trophy')" title="Trophy Room">🏆</button>
+        <button class="fab-btn fab-debug" id="btn-dev-tools" onclick="toggleModal('modal-debug')" title="Dev Tools">🛠️</button>
+    </div>
+
+    <div id="hud-bar" class="hud" style="display:none;">
+        <div class="hud-item">
+            <span class="hud-label">CASH</span>
+            <span id="player-money" class="hud-val money">$1,000</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">REP</span>
+            <span id="player-rep" class="hud-val rep">⭐ 0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">DAY</span>
+            <span id="day-counter" class="hud-val">1</span>
+        </div>
+    </div>
+
+    <div id="game-ui" class="game-wrapper">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Current Unit</h2>
+                <button class="btn-pause" onclick="togglePause()">⏸ PAUSE</button>
+            </div>
+            <div class="door-container">
+                <div class="door-contents-bg">
+                    <h3 style="color:#aaa">SOLD!</h3>
+                </div>
+                <div id="door-visual" class="door-visual" data-id="1"></div>
+            </div>
+            <div id="container-desc" class="hint-text">Waiting...</div>
+
+            <div class="bid-display">
+                <div style="font-size: 0.8rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Current Bid</div>
+                <div id="current-bid-display" class="current-bid">$0</div>
+                <div id="bidder-name">---</div>
+                <div id="auction-timer" style="font-family:monospace; margin-top:10px; color:#666;">08s</div>
+            </div>
+
+            <div class="controls">
+                <button id="btn-bid" class="btn-green" onclick="placePlayerBid()">Bid</button>
+                <button id="btn-pass" class="btn-red" onclick="passBid()">Pass</button>
+                
+                <div id="abilities-container" class="abilities-row">
+                    <button id="btn-intimidate" class="ability-btn btn-dark" style="display:none;" onclick="activateIntimidate()">
+                        😤 Intimidate <div class="cooldown-overlay"></div>
+                    </button>
+                    <button id="btn-freeze" class="ability-btn btn-dark" style="display:none;" onclick="activateFreeze()">
+                        ❄️ Freeze <div class="cooldown-overlay"></div>
+                    </button>
+                </div>
+
+                <button id="btn-skip" class="btn-blue" style="grid-column: 1/-1; display:none;" onclick="skipToEnd()">Fast Forward</button>
+                <button id="btn-next" class="btn-blue" style="grid-column: 1/-1; display:none;" onclick="startNewAuction()">Next Unit &rarr;</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Contents</h2>
+            <div id="empty-state" style="color:#666; text-align:center; padding:40px; font-style:italic;">Win the auction to reveal the items inside.</div>
+            <div id="loot-grid" class="loot-grid"></div>
+            <div id="appraisal-result" style="display:none;"></div>
+            <div class="log-container" id="game-log"></div>
+        </div>
+    </div>
+
+<script>
+    // --- SAVE SYSTEM ---
+    const SaveSystem = {
+        key: "StorageHunter_FullGame_Save",
+        save() {
+            const data = {
+                money: state.money,
+                rep: state.rep,
+                day: state.day,
+                name: state.name,
+                skills: SKILLS.map(s => ({ id: s.id, active: s.active })),
+                collections: COLLECTIONS.map(c => ({ id: c.id, collected: c.collected })),
+                rivals: state.rivals,
+                cheats: state.cheatsUnlocked
+            };
+            localStorage.setItem(this.key, JSON.stringify(data));
+        },
+        load() {
+            const raw = localStorage.getItem(this.key);
+            if (!raw) return false;
+            const data = JSON.parse(raw);
+            state.money = data.money;
+            state.rep = data.rep;
+            state.day = data.day;
+            state.name = data.name;
+            state.rivals = data.rivals || {};
+            state.cheatsUnlocked = data.cheats || false;
+            
+            data.skills.forEach(saved => {
+                const s = SKILLS.find(x => x.id === saved.id);
+                if (s) s.active = saved.active;
+            });
+            data.collections.forEach(saved => {
+                const c = COLLECTIONS.find(x => x.id === saved.id);
+                if (c) c.collected = saved.collected;
+            });
+            return true;
+        }
+    };
+
+    function loadGame() {
+        if (SaveSystem.load()) {
+            AudioEngine.init();
+            AudioEngine.ctx.resume().then(() => {
+                document.getElementById('title-screen').style.display = 'none';
+                document.getElementById('hud-bar').style.display = 'flex';
+                document.getElementById('floating-menu').style.display = 'flex'; 
+                document.getElementById('game-ui').style.display = 'grid';
+                if(state.cheatsUnlocked) document.getElementById('btn-dev-tools').style.display = 'flex';
+                renderSkills(); renderCollections(); updateHUD(); startNewAuction();
+            });
+        } else { alert("No save found."); }
+    }
+
+    function clearSave() { if (confirm("Delete all progress?")) { localStorage.removeItem(SaveSystem.key); location.reload(); } }
+
+    function togglePause() {
+        if(!state.active) return;
+        state.isPaused = !state.isPaused;
+        document.getElementById('pause-overlay').style.display = state.isPaused ? 'flex' : 'none';
+        if(!state.isPaused) { resetTimer(true); } 
+        else { clearInterval(timerInterval); }
+    }
+
+    // --- CUSTOM ALERT ---
+    function showMessage(msg, title="NOTICE") {
+        document.getElementById('alert-title').innerText = title;
+        document.getElementById('alert-msg').innerHTML = msg;
+        document.getElementById('modal-alert').style.display = 'flex';
+        playSound('click');
+    }
+    function closeAlert() { document.getElementById('modal-alert').style.display = 'none'; }
+
+    // --- AUDIO SYSTEM ---
+    const AudioEngine = {
+        ctx: null,
+        init: function() { window.AudioContext = window.AudioContext || window.webkitAudioContext; this.ctx = new AudioContext(); },
+        play: function(type) {
+            if (!this.ctx) return;
+            const t = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            
+            if (type === 'click') {
+                osc.frequency.setValueAtTime(800, t);
+                osc.frequency.exponentialRampToValueAtTime(300, t + 0.1);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.linearRampToValueAtTime(0, t+0.1);
+            } else if (type === 'door') {
+                const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(500, t);
+                filter.frequency.linearRampToValueAtTime(100, t + 0.5);
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.linearRampToValueAtTime(0, t + 0.5);
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                noise.start(t);
+            } else if (type === 'siren') { 
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, t);
+                osc.frequency.linearRampToValueAtTime(400, t + 0.3);
+                osc.frequency.linearRampToValueAtTime(800, t + 0.6);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.linearRampToValueAtTime(0, t + 0.6);
+            } else if (type === 'win') {
+                [523, 659, 784, 1046].forEach((f, i) => {
+                    const o = this.ctx.createOscillator();
+                    const g = this.ctx.createGain();
+                    o.type = 'triangle'; o.frequency.value = f;
+                    g.gain.setValueAtTime(0.1, t + i*0.1);
+                    g.gain.linearRampToValueAtTime(0, t + i*0.1 + 0.4);
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.start(t + i*0.1); o.stop(t + i*0.1 + 0.4);
+                });
+            } else if (type === 'loss') {
+                [150, 100].forEach((f, i) => {
+                    const o = this.ctx.createOscillator();
+                    const g = this.ctx.createGain();
+                    o.type = 'sawtooth'; o.frequency.value = f;
+                    g.gain.setValueAtTime(0.1, t + i*0.3);
+                    g.gain.linearRampToValueAtTime(0, t + i*0.3 + 0.5);
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.start(t + i*0.3); o.stop(t + i*0.3 + 0.5);
+                });
+            }
+            if(type !== 'door' && type !== 'win' && type !== 'loss' && type !== 'siren') { 
+                osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.1);
+            }
+        }
+    };
+    function playSound(type) { AudioEngine.play(type); }
+    function initAudioAndStart() { AudioEngine.init(); AudioEngine.ctx.resume().then(() => startGame()); }
+
+    // --- DATA ---
+    const CONFIG = { bidIncrement: 50, timerDuration: 8 };
+
+    const SKILLS = [
+        { id: "scrapper", name: "Scrapper", desc: "Junk items are worth $25 (Scrap Value)", cost: 5, active: false },
+        { id: "fast_talker", name: "Fast Talker", desc: "Bids increase by $25 instead of $50", cost: 5, active: false },
+        { id: "appraiser", name: "Appraiser's Eye", desc: "See a Quality Hint before bidding", cost: 8, active: false },
+        { id: "intimidate", name: "Intimidate", desc: "Active Ability: Reduce rival aggression ($50 cost)", cost: 12, active: false },
+        { id: "xray", name: "Storage Key", desc: "Start every auction with 1 item already revealed", cost: 10, active: false },
+        { id: "restoration", name: "Restoration", desc: "Auto-fix one 'Broken' item per unit", cost: 15, active: false },
+        { id: "deep_pockets", name: "Deep Pockets", desc: "Earn 5% interest every 5 days", cost: 15, active: false },
+        { id: "freeze", name: "Freeze Time", desc: "Active Ability: Pause timer for 5s", cost: 18, active: false },
+        { id: "kickback", name: "Kickback", desc: "Get 5% of the winning bid if you lose", cost: 20, active: false },
+        { id: "lucky", name: "Lucky Charm", desc: "10% chance to find Hidden Cash ($100-$500)", cost: 25, active: false },
+        { id: "magnet", name: "Magnetism", desc: "Increase spawn rate of Collection Items", cost: 30, active: false },
+        { id: "masterkey", name: "Master Key", desc: "Reveal 2 items at start instead of 1", cost: 40, active: false },
+        { id: "overlord", name: "Overlord", desc: "See Rival Archetypes (e.g. 'The Whale')", cost: 50, active: false }
+    ];
+
+    const COLLECTIONS = [
+        { id: "musician", name: "The Musician", items: ["Guitar", "Old Vinyls", "Saxophone"], rewardRep: 10, collected: [] },
+        { id: "gamer", name: "Retro Gamer", items: ["Game Console", "Arcade Cabinet", "Power Glove"], rewardRep: 15, collected: [] },
+        { id: "antiques", name: "Antique Hunter", items: ["Vintage Lamp", "Pocket Watch", "Ceramic Vase"], rewardRep: 12, collected: [] }
+    ];
+
+    const ITEMS = [
+        { type: "Junk", name: "Old Newspapers", min: 0, max: 5, icon: "📰" },
+        { type: "Junk", name: "Broken Chair", min: 0, max: 5, icon: "🪑" },
+        { type: "Junk", name: "Dirty Mattress", min: 0, max: 10, icon: "🛏️" },
+        { type: "Common", name: "Microwave", min: 30, max: 80, icon: "🔌" },
+        { type: "Common", name: "Fishing Gear", min: 40, max: 100, icon: "🎣" },
+        { type: "Rare", name: "Guitar", min: 150, max: 400, icon: "🎸", collection: "musician" },
+        { type: "Rare", name: "Old Vinyls", min: 50, max: 150, icon: "🎵", collection: "musician" },
+        { type: "Rare", name: "Saxophone", min: 200, max: 600, icon: "🎷", collection: "musician" },
+        { type: "Rare", name: "Game Console", min: 100, max: 300, icon: "🎮", collection: "gamer" },
+        { type: "Rare", name: "Arcade Cabinet", min: 500, max: 1200, icon: "🕹️", collection: "gamer" },
+        { type: "Rare", name: "Power Glove", min: 800, max: 2000, icon: "🥊", collection: "gamer" },
+        { type: "Rare", name: "Vintage Lamp", min: 80, max: 300, icon: "🛋️", collection: "antiques" },
+        { type: "Rare", name: "Pocket Watch", min: 300, max: 900, icon: "⌚", collection: "antiques" },
+        { type: "Rare", name: "Ceramic Vase", min: 100, max: 500, icon: "⚱️", collection: "antiques" },
+        { type: "Special", name: "Locked Safe", min: 0, max: 5000, icon: "🔒", isSafe: true },
+        { type: "Illegal", name: "Suspicious Package", min: 500, max: 1500, icon: "📦", isIllegal: true }
+    ];
+
+    const FIRST_NAMES = ["Adam", "Bill", "Carl", "Dave", "Frank", "Greg", "Jack", "Jim", "Joe", "Ken", "Mark", "Mike", "Paul", "Ray", "Sam", "Tim", "Tom", "Will", "Sarah", "Jane", "Liz", "Amy", "Kate"];
+    const LAST_NAMES = ["Smith", "Jones", "Davis", "Miller", "Wilson", "Moore", "Taylor", "White", "Harris", "Martin", "Thompson", "Garcia", "Clark", "Lewis", "Lee", "Walker", "Hall", "Allen", "Young", "King", "Wright", "Hill", "Scott", "Green", "Adams", "Baker"];
+    
+    const ARCHETYPES = [
+        { id: "whale", name: "The Whale", mod: 2.5, behavior: "aggressive" }, 
+        { id: "highroller", name: "The High Roller", mod: 1.5, behavior: "jump" }, 
+        { id: "troll", name: "The Troll", mod: 0.6, behavior: "dropout" }, 
+        { id: "collector", name: "The Collector", mod: 1.0, behavior: "keywords" }, 
+        { id: "rookie", name: "The Rookie", mod: 0.9, behavior: "panic" }, 
+        { id: "calculator", name: "The Calculator", mod: 0.99, behavior: "exact" }, 
+        { id: "bully", name: "The Bully", mod: 1.2, behavior: "midjump" }, 
+        { id: "scavenger", name: "The Scavenger", mod: 1.1, behavior: "trash" }, 
+        { id: "copycat", name: "The Copycat", mod: 1.0, behavior: "copy" }, 
+        { id: "maniac", name: "The Maniac", mod: 5.0, behavior: "random" }
+    ];
+
+    // --- STATE ---
+    let state = {
+        money: 1000, rep: 0, day: 1, name: "Player",
+        container: [], containerValue: 0,
+        bid: 0, highBidder: null, playerOut: false,
+        timer: 8, activeAIs: [],
+        cheatsUnlocked: false,
+        rivals: {}, 
+        isGrandAuction: false,
+        rentDue: 500,
+        active: false,
+        intimidated: false,
+        isFrozen: false,
+        isPaused: false
+    };
+    let aiInterval, timerInterval;
+
+    // --- GAME LOGIC ---
+    function startGame() {
+        const input = document.getElementById('input-money');
+        const raw = input.value.trim();
+        if(raw.toLowerCase() === "spiderman" && !state.cheatsUnlocked) {
+            state.cheatsUnlocked = true; input.value = ""; input.placeholder = "🕷️ Cheat Mode Active! Enter cash...";
+            input.classList.add('success'); setTimeout(()=>input.classList.remove('success'),1000); return;
+        }
+        const parsed = parseInt(raw);
+        if(!parsed || parsed < 1000) { document.getElementById('money-error').style.display='block'; return; }
+        
+        state.money = parsed;
+        state.name = document.getElementById('input-name').value || "Player";
+        document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('hud-bar').style.display = 'flex';
+        document.getElementById('floating-menu').style.display = 'flex'; 
+        document.getElementById('game-ui').style.display = 'grid';
+        if(state.cheatsUnlocked) document.getElementById('btn-dev-tools').style.display = 'flex';
+        
+        renderSkills(); renderCollections(); updateHUD(); startNewAuction();
+    }
+
+    function generateContainer() {
+        state.isGrandAuction = (state.day % 7 === 0);
+        const hasMagnet = SKILLS.find(s=>s.id==='magnet' && s.active);
+        const hasKey = SKILLS.find(s => s.id === 'xray').active;
+        const hasMasterKey = SKILLS.find(s=>s.id==='masterkey' && s.active);
+        
+        state.container = [];
+        let hints = [];
+        const door = document.getElementById('door-visual');
+        
+        if(state.isGrandAuction) {
+            door.classList.add('grand');
+            showMessage(`Today is a <b>GRAND AUCTION</b>!<br>Entry fees are higher, but items are RARE!`, "GRAND EVENT");
+        } else {
+            door.classList.remove('grand');
+        }
+
+        let count = Math.floor(Math.random() * 5) + 3;
+        for(let i=0; i<count; i++) {
+            let pool = ITEMS;
+            if(state.isGrandAuction) {
+                pool = ITEMS.filter(x => x.type === "Rare" || x.isSafe || x.isIllegal);
+            } else if(hasMagnet && Math.random() < 0.3) {
+                pool = ITEMS.filter(x => x.collection);
+            }
+            
+            const tmpl = pool[Math.floor(Math.random() * pool.length)];
+            if(tmpl.isSafe && state.container.find(x=>x.isSafe)) { i--; continue; }
+
+            let val = Math.floor(Math.random() * (tmpl.max - tmpl.min)) + tmpl.min;
+            if(tmpl.isSafe) val = Math.random() < 0.4 ? 0 : Math.floor(Math.random()*5000);
+
+            const newItem = { ...tmpl, value: val, id: Date.now()+i, revealedByKey: false };
+            state.container.push(newItem);
+
+            if(i < 2) hints.push(tmpl.name);
+        }
+        
+        state.containerValue = state.container.reduce((a,b) => a + b.value, 0);
+        
+        let hintHtml = `You see: <b>${hints.join(", ")}</b>...`;
+        if(SKILLS.find(s=>s.id==='appraiser' && s.active)) {
+            let quality = "Average";
+            if(state.containerValue > 2000) quality = "High Value! 💎";
+            else if(state.containerValue < 300) quality = "Trash 🗑️";
+            hintHtml += `<span class="quality-hint">Appraiser: ${quality}</span>`;
+        }
+        document.getElementById('container-desc').innerHTML = hintHtml;
+        
+        door.classList.remove('open');
+        door.setAttribute('data-id', state.day);
+        document.getElementById('loot-grid').innerHTML = "";
+
+        if(hasMasterKey && !state.isGrandAuction) {
+             if(state.container.length > 0) revealPreAuctionItem(state.container[0]);
+             if(state.container.length > 1) revealPreAuctionItem(state.container[1]);
+        } else if(hasKey && !state.isGrandAuction && state.container.length > 0) {
+             revealPreAuctionItem(state.container[0]);
+        }
+    }
+    
+    function revealPreAuctionItem(item) {
+        const grid = document.getElementById('loot-grid');
+        const el = document.createElement('div');
+        el.className = "item-card key-reveal";
+        el.innerHTML = `<div class="key-badge">KEY</div><span class="item-icon">${item.icon}</span><span class="item-name">${item.name}</span><span class="item-price">$${item.value}</span><div style="font-size:0.7rem;color:#888">(Pending)</div>`;
+        grid.appendChild(el);
+    }
+
+    function resetRound() {
+        document.getElementById('current-bid-display').innerText = "$0";
+        document.getElementById('bidder-name').innerText = "---";
+        document.getElementById('btn-next').style.display = 'none';
+        document.getElementById('btn-bid').disabled = false;
+        document.getElementById('btn-pass').disabled = false;
+        document.getElementById('btn-skip').style.display = 'none';
+        document.getElementById('appraisal-result').style.display = 'none';
+        document.getElementById('empty-state').style.display = "none";
+        
+        document.getElementById('btn-intimidate').style.display = SKILLS.find(s=>s.id==='intimidate' && s.active) ? 'flex' : 'none';
+        document.getElementById('btn-freeze').style.display = SKILLS.find(s=>s.id==='freeze' && s.active) ? 'flex' : 'none';
+        
+        state.intimidated = false;
+        state.isFrozen = false;
+        document.getElementById('auction-timer').style.color = "#666";
+    }
+
+    function startNewAuction() {
+        clearInterval(aiInterval); clearInterval(timerInterval);
+        resetRound();
+        
+        SaveSystem.save(); // AUTO SAVE
+
+        state.active = true; 
+        state.bid = 0; state.highBidder = null; state.playerOut = false;
+
+        if(state.day > 1 && (state.day - 1) % 7 === 0) {
+            state.money -= state.rentDue;
+            if(state.money < 0) {
+                showMessage(`You couldn't pay rent!<br>GAME OVER.<br>Final Rep: ${state.rep}`, "BANKRUPT");
+                location.reload(); return;
+            }
+            showMessage(`Weekly Rent Paid: -$${state.rentDue}`, "RENT DUE");
+        }
+
+        state.activeAIs = [];
+        for(let i=0; i<3; i++) {
+            const f = FIRST_NAMES[Math.floor(Math.random()*FIRST_NAMES.length)];
+            const l = LAST_NAMES[Math.floor(Math.random()*LAST_NAMES.length)];
+            const name = `${f} ${l}`;
+            const hate = state.rivals[name] || 0;
+            const arch = ARCHETYPES[Math.floor(Math.random()*ARCHETYPES.length)];
+            let mod = arch.mod; if(state.isGrandAuction) mod *= 1.5;
+            state.activeAIs.push({ name, hate, mod, aggro: arch.aggro, behavior: arch.behavior, id: arch.id, dropped: false });
+        }
+
+        generateContainer();
+        updateHUD();
+        
+        if(state.isGrandAuction) {
+            document.getElementById('current-bid-display').innerText = "$500";
+            state.bid = 500;
+        }
+        
+        setTimeout(() => {
+            startAI();
+            resetTimer(true);
+        }, 500);
+    }
+
+    function placePlayerBid() {
+        if(!state.active || state.isPaused) return;
+        playSound('click');
+        const inc = SKILLS.find(s=>s.id==='fast_talker').active ? 25 : CONFIG.bidIncrement;
+        if(state.money < state.bid + inc) { showMessage("Not enough cash!"); return; }
+        
+        state.activeAIs.forEach(ai => {
+            if(ai.behavior === 'panic' && Math.random() < 0.5) {
+                ai.dropped = true;
+                log(`${ai.name} (Rookie) panicked and left.`);
+            }
+        });
+
+        submitBid(state.bid + inc, state.name);
+    }
+
+    function submitBid(amount, name) {
+        state.bid = amount;
+        state.highBidder = name;
+        
+        let displayName = name;
+        if(name !== state.name && SKILLS.find(s=>s.id==='overlord' && s.active)) {
+            const ai = state.activeAIs.find(a => a.name === name);
+            if(ai) displayName += ` <span style="font-size:0.7rem; color:var(--text-muted)">(${ai.id})</span>`;
+        }
+
+        const pEl = document.getElementById('current-bid-display');
+        const nEl = document.getElementById('bidder-name');
+        pEl.className = "current-bid"; nEl.className = "";
+        void pEl.offsetWidth; 
+        
+        pEl.innerText = "$" + amount;
+        nEl.innerHTML = displayName;
+
+        const rival = state.activeAIs.find(ai => ai.name === name);
+        if(rival && rival.hate >= 3) {
+            nEl.classList.add('enraged');
+            nEl.innerText += " 😡";
+        }
+
+        if (name === state.name) pEl.classList.add('anim-player-bid');
+        else nEl.classList.add('anim-rival-bid');
+
+        resetTimer(true);
+        
+        const inc = SKILLS.find(s=>s.id==='fast_talker').active ? 25 : CONFIG.bidIncrement;
+        if(state.playerOut || (state.money < state.bid + inc && state.highBidder !== state.name)) {
+            document.getElementById('btn-skip').style.display = 'block';
+        }
+    }
+
+    function startAI() {
+        if(aiInterval) clearInterval(aiInterval);
+        aiInterval = setInterval(() => {
+            if(!state.active || state.isFrozen || state.isPaused) return;
+            
+            const possibleBidders = state.activeAIs.filter(ai => !ai.dropped && ai.name !== state.highBidder);
+            if(possibleBidders.length === 0) return;
+            
+            const ai = possibleBidders[Math.floor(Math.random() * possibleBidders.length)];
+            
+            let limit = state.containerValue * ai.mod;
+            if(state.intimidated) limit *= 0.8; 
+            if(ai.hate >= 3) limit *= 1.5; 
+            
+            if(ai.behavior === 'dropout' && state.bid > state.containerValue * 0.5) { ai.dropped = true; return; }
+            if(ai.behavior === 'copy' && state.highBidder !== state.name) return;
+            if(ai.behavior === 'trash' && state.containerValue < 500) limit *= 2.0;
+
+            if(state.bid < limit && Math.random() < 0.4) {
+                let bidAmount = state.bid + 50;
+                if(ai.behavior === 'midjump' && Math.random() < 0.2) bidAmount += 200;
+                if(ai.behavior === 'maniac' && Math.random() < 0.3) bidAmount += 500;
+                submitBid(bidAmount, ai.name);
+            } else if (state.bid >= limit) {
+                ai.dropped = true;
+            }
+        }, 1200);
+    }
+
+    function endAuction() {
+        state.active = false;
+        clearInterval(aiInterval); clearInterval(timerInterval);
+        
+        document.getElementById('btn-bid').disabled = true;
+        document.getElementById('btn-pass').disabled = true;
+        document.getElementById('btn-skip').style.display = 'none';
+        playSound('door');
+        document.getElementById('door-visual').classList.add('open');
+
+        const playerWon = state.highBidder === state.name;
+        const profit = state.containerValue - state.bid;
+
+        if(playerWon) {
+            state.activeAIs.forEach(ai => {
+                state.rivals[ai.name] = (state.rivals[ai.name] || 0) + 1;
+            });
+            playSound('win');
+            state.money -= state.bid;
+            
+            if(SKILLS.find(s=>s.id==='lucky' && s.active) && Math.random() < 0.1) {
+                const bonus = Math.floor(Math.random()*400)+100;
+                state.money += bonus;
+                log(`🍀 Lucky Charm! Found hidden $${bonus}`);
+            }
+
+            log(`Won unit for $${state.bid}`);
+            if(profit > 0) state.rep++;
+        } else {
+            playSound('loss');
+            log(`Lost to ${state.highBidder}`);
+            
+            if(SKILLS.find(s=>s.id==='kickback' && s.active) && state.bid > 0) {
+                const kick = Math.floor(state.bid * 0.05);
+                state.money += kick;
+                log(`🤝 Kickback: Got $${kick} back.`);
+            }
+        }
+
+        revealLoot(playerWon);
+        showAppraisalResult(playerWon, profit);
+        document.getElementById('btn-next').style.display = 'block';
+        state.day++;
+        updateHUD();
+    }
+
+    function revealLoot(isPlayer) {
+        const grid = document.getElementById('loot-grid');
+        grid.innerHTML = "";
+        
+        const scrapper = SKILLS.find(s=>s.id==='scrapper' && s.active);
+        const restoration = SKILLS.find(s=>s.id==='restoration' && s.active);
+        let restoredOne = false;
+        
+        [...state.container].forEach(item => {
+            const el = document.createElement('div');
+            
+            if (!isPlayer) {
+                let displayVal = item.value;
+                el.className = "item-card cpu-won";
+                el.innerHTML = `<span class="item-icon">${item.icon}</span><span class="item-name">${item.name}</span><span class="item-price">$${displayVal}</span>`;
+            } else {
+                if(restoration && !restoredOne && item.name.includes("Broken")) {
+                    item.name = item.name.replace("Broken", "Refurbished");
+                    item.value *= 2;
+                    el.classList.add('refurbished');
+                    restoredOne = true;
+                }
+                if(scrapper && item.type === "Junk") {
+                    item.value = 25; 
+                    item.name += " (Scrap)";
+                }
+
+                if(item.isIllegal) {
+                    el.className = "item-card suspicious";
+                    el.innerHTML = `
+                        <div style="font-size:2rem">📦</div>
+                        <div class="item-name" style="color:white">Suspicious</div>
+                        <button class="btn-black" style="width:100%; margin-top:5px; font-size:0.7rem;" onclick="sellToFence(this, ${item.value})">🏴‍☠️ FENCE IT</button>
+                    `;
+                } else if(item.isSafe) {
+                    el.className = "item-card safe-box";
+                    el.innerHTML = `<div style="font-size:2rem">🔒</div><div class="item-name">Safe</div><div class="progress-container"><div class="progress-fill"></div></div><button class="btn-crack" onclick="crackSafe(this, ${item.value})">CRACK IT</button>`;
+                } else if (item.collection) {
+                    el.className = "item-card";
+                    el.innerHTML = `<span class="item-icon">${item.icon}</span><span class="item-name">${item.name}</span><span class="item-price">Val: $${item.value}</span><div class="loot-actions"><button class="btn-small btn-green" onclick="sellItem(this, ${item.value})">Sell</button><button class="btn-small btn-blue" onclick="keepItem(this, '${item.collection}', '${item.name}', ${item.value})">Keep</button></div>`;
+                } else {
+                    el.className = "item-card";
+                    el.innerHTML = `<span class="item-icon">${item.icon}</span><span class="item-name">${item.name}</span><span class="item-price">$${item.value}</span><div class="status-badge status-sold">AUTO-SOLD</div>`;
+                    state.money += item.value;
+                }
+            }
+            grid.appendChild(el);
+        });
+        if(isPlayer) updateHUD();
+    }
+
+    window.sellToFence = function(btn, trueVal) {
+        playSound('click');
+        const roll = Math.random();
+        const card = btn.closest('.item-card');
+        
+        if(roll < 0.25) { 
+            playSound('siren');
+            state.money -= 500;
+            showMessage("🚨 <b>POLICE RAID!</b><br>The fence was a sting operation.<br>Item seized. Fined $500.", "BUSTED");
+            card.innerHTML = `<span class="item-icon">🚓</span><span class="item-name">CONFISCATED</span><div class="status-badge status-illegal">FINED -$500</div>`;
+        } else if (roll < 0.55) { 
+            showMessage("The fence ran off with your item...", "SCAMMED");
+            card.innerHTML = `<span class="item-icon">💨</span><span class="item-name">STOLEN</span><div class="status-badge status-kept">LOST</div>`;
+        } else { 
+            const profit = trueVal * 3;
+            state.money += profit;
+            playSound('win');
+            card.style.background = "#fff"; card.style.color = "#333"; card.style.border = "none";
+            card.innerHTML = `<span class="item-icon">💰</span><span class="item-name">Sold on Black Market</span><span class="item-price">+$${profit}</span><div class="status-badge status-sold">SOLD</div>`;
+        }
+        updateHUD();
+    };
+
+    function activateIntimidate() {
+        if(state.money < 50) return showMessage("Need $50!");
+        state.money -= 50; updateHUD();
+        state.intimidated = true;
+        log("😤 Intimidate used! Opponents hesitant.");
+        animateCooldown('btn-intimidate');
+    }
+    
+    function activateFreeze() {
+        state.isFrozen = true;
+        log("❄️ Time Frozen for 5s!");
+        document.getElementById('auction-timer').style.color = "#3498db";
+        animateCooldown('btn-freeze');
+        setTimeout(() => {
+            state.isFrozen = false;
+            document.getElementById('auction-timer').style.color = "#666";
+        }, 5000);
+    }
+    
+    function animateCooldown(btnId) {
+        const btn = document.getElementById(btnId);
+        const overlay = btn.querySelector('.cooldown-overlay');
+        btn.disabled = true; overlay.style.height = '100%';
+        setTimeout(() => { overlay.style.height = '0%'; btn.disabled = false; }, 10000);
+    }
+
+    function resetTimer(start) {
+        if(timerInterval) clearInterval(timerInterval);
+        state.timer = CONFIG.timerDuration;
+        document.getElementById('auction-timer').innerText = "0" + state.timer + "s";
+        if(start) {
+            timerInterval = setInterval(() => {
+                if(state.isFrozen || state.isPaused) return;
+                state.timer--;
+                document.getElementById('auction-timer').innerText = "0" + state.timer + "s";
+                if(state.timer <= 0) endAuction();
+            }, 1000);
+        }
+    }
+
+    function passBid() { state.playerOut = true; playSound('click'); document.getElementById('btn-bid').disabled = true; document.getElementById('btn-pass').disabled = true; document.getElementById('btn-skip').style.display = 'block'; }
+    
+    function skipToEnd() { playSound('click'); clearInterval(aiInterval); clearInterval(timerInterval); while(true) { let bidMade = false; state.activeAIs.forEach(ai => { let limit = state.containerValue * ai.mod; if(ai.hate >= 3) limit *= 1.5; if(state.bid < limit && Math.random() < 0.5 && state.highBidder !== ai.name) { state.bid += 50; state.highBidder = ai.name; bidMade = true; } }); if(!bidMade) break; } endAuction(); }
+    
+    function showAppraisalResult(playerWon, profit) {
+        const box = document.getElementById('appraisal-result'); box.style.display = 'block';
+        box.className = 'result-box ' + (profit > 0 ? 'profit-win' : 'profit-loss');
+        const winnerName = playerWon ? "YOU" : state.highBidder;
+        box.innerHTML = `<div class="result-row"><span>WINNER</span> <b>${winnerName}</b></div><div class="result-row"><span>VALUE</span> <b>$${state.containerValue.toLocaleString()}</b></div><div class="result-row"><span>BID</span> <b>$${state.bid.toLocaleString()}</b></div><div class="result-row result-total" style="color:${profit > 0 ? 'var(--green)' : 'var(--red)'}"><span>${profit > 0 ? 'PROFIT' : 'LOSS'}</span> <span>${profit > 0 ? '+' : ''}$${profit.toLocaleString()}</span></div>`;
+    }
+    
+    window.crackSafe = function(btn, realValue) { playSound('click'); const card = btn.parentElement; const bar = card.querySelector('.progress-fill'); const container = card.querySelector('.progress-container'); btn.style.display = 'none'; container.style.display = 'block'; setTimeout(() => bar.style.width = "100%", 10); setTimeout(() => { container.style.display = 'none'; if(realValue > 0) { card.style.background = "#fff"; card.style.color = "#2c3e50"; card.innerHTML = `<span class="item-icon">💰</span><div class="item-name">JACKPOT</div><div class="item-price">$${realValue}</div>`; state.money += realValue; playSound('win'); } else { card.style.background = "#e74c3c"; card.style.color = "white"; card.innerHTML = `<span class="item-icon">🕸️</span><div class="item-name">EMPTY</div><div>$0</div>`; playSound('loss'); } updateHUD(); }, 2000); }
+    
+    window.sellItem = function(btn, val) { playSound('click'); state.money += val; btn.closest('.item-card').innerHTML = `<span class="item-icon">💰</span><span class="item-name">Sold</span><span class="item-price">+$${val}</span><div class="status-badge status-sold">SOLD</div>`; updateHUD(); }
+    
+    window.keepItem = function(btn, colId, itemName, val) { playSound('click'); const col = COLLECTIONS.find(c => c.id === colId); if(!col.collected.includes(itemName)) { col.collected.push(itemName); renderCollections(); if(col.collected.length === col.items.length) { state.rep += col.rewardRep; showMessage(`🎉 COLLECTION COMPLETE: ${col.name}\n+${col.rewardRep} Reputation!`, "TROPHY"); playSound('win'); } const card = btn.closest('.item-card'); card.innerHTML = `<span class="item-icon">🏆</span><span class="item-name">${itemName}</span><span class="item-price" style="font-size:0.7rem; color:#aaa;">Val: $${val}</span><div class="status-badge status-kept">KEPT</div>`; } else { showMessage("Already owned! Selling."); sellItem(btn, val); } updateHUD(); }
+    
+    function renderSkills() { const list = document.getElementById('skills-list'); list.innerHTML = ""; SKILLS.forEach(skill => { const div = document.createElement('div'); div.className = "skill-row"; div.innerHTML = `<div class="skill-info"><h4>${skill.name} ${skill.active ? '✅' : ''}</h4><p>${skill.desc}</p></div><button class="btn-purple" onclick="buySkill('${skill.id}')" ${skill.active ? 'disabled' : ''}>${skill.active ? 'OWNED' : '⭐ ' + skill.cost}</button>`; list.appendChild(div); }); }
+    
+    window.buySkill = function(id) { playSound('click'); const skill = SKILLS.find(s => s.id === id); if(state.rep >= skill.cost) { state.rep -= skill.cost; skill.active = true; renderSkills(); updateHUD(); SaveSystem.save(); } else { showMessage("Not enough Reputation!"); } }
+    
+    function renderCollections() { const list = document.getElementById('collections-list'); list.innerHTML = ""; COLLECTIONS.forEach(col => { let slotsHtml = ""; col.items.forEach(item => { const filled = col.collected.includes(item); slotsHtml += `<div class="slot ${filled ? 'filled' : ''}" title="${item}">${filled ? '✔️' : '?'}</div>`; }); const div = document.createElement('div'); div.className = "collection-group"; div.innerHTML = `<div class="collection-header"><span>${col.name}</span><span style="color:var(--gold)">Reward: ${col.rewardRep} Rep</span></div><div class="collection-slots">${slotsHtml}</div>`; list.appendChild(div); }); }
+    
+    function toggleModal(id) { playSound('click'); const el = document.getElementById(id); el.style.display = el.style.display === 'flex' ? 'none' : 'flex'; if(id === 'modal-debug') document.getElementById('debug-cash-display').innerText = "Current: $" + state.money.toLocaleString(); }
+    
+    function updateHUD() { document.getElementById('player-money').innerText = "$" + state.money.toLocaleString(); document.getElementById('player-rep').innerText = "⭐ " + state.rep; document.getElementById('day-counter').innerText = state.day; }
+    
+    function log(msg) { const d = document.getElementById('game-log'); d.innerHTML += `<div class="log-entry">> ${msg}</div>`; d.scrollTop = d.scrollHeight; }
+    
+    function debugAddCash() { state.money += 50000; updateHUD(); document.getElementById('debug-cash-display').innerText = "Current: $" + state.money.toLocaleString(); log("🛠️ Added $50,000"); }
+    function debugAddRep() { state.rep += 10; updateHUD(); log("🛠️ Added 10 Rep"); }
+    function debugPeek() { if(state.active) showMessage("Unit True Value: $" + state.containerValue.toLocaleString(), "DEBUG"); }
+    function debugForceWin() { if(!state.active) return; clearInterval(aiInterval); clearInterval(timerInterval); state.highBidder = state.name; if(state.bid <= 0) state.bid = 0; log("🛠️ Force Win activated!"); endAuction(); toggleModal('modal-debug'); }
+
+</script>
+</body>
+</html>
