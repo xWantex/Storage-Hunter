@@ -1,0 +1,12 @@
+/* CSS styles copied from index.html file */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+h1 {
+    color: #333;
+}
+p {
+    line-height: 1.5;
+}
